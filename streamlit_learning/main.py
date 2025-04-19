@@ -10,7 +10,7 @@ def show_dev_info():
         
 
     with st.container(height=300, border=True):
-            dev_img = r"\streamlit_learning\static\ADAM'S_IMAGE.png"
+            dev_img = r"ADAM'S_IMAGE.png"
             
             developer_image = st.image(image=dev_img)
             developer_header = st.subheader("Adam")
@@ -25,7 +25,7 @@ def show_dev_info():
 
 def show_creator_info():
     with st.container(height=300, border=True, ):
-        creator_img = r"\streamlit_learning\static\FARIDA'S_IMAGE.png"
+        creator_img = r"FARIDA'S_IMAGE.png"
         
         creator_image = st.image(image=creator_img)
         creator_header = st.subheader("Farida")
@@ -49,45 +49,45 @@ def show_specs(type_nb, type_price):
 
 # bracelets images
 def load_images():
-    bracelet1 = PIL.Image.open(r"\streamlit_learning\static\bracelet (1).jpg")
-    bracelet2 = PIL.Image.open(r"\streamlit_learning\static\bracelet (2).jpg")
-    bracelet3 = PIL.Image.open(r"\streamlit_learning\static\bracelet (3).jpg")
-    bracelet4 = PIL.Image.open(r"\streamlit_learning\static\bracelet (4).jpg")
-    bracelet5 = PIL.Image.open(r"\streamlit_learning\static\bracelet (5).jpg")
-    bracelet6 = PIL.Image.open(r"\streamlit_learning\static\bracelet (6).jpg")
-    bracelet7 = PIL.Image.open(r"\streamlit_learning\static\bracelet (7).jpg")
-    bracelet8 = PIL.Image.open(r"\streamlit_learning\static\bracelet (8).jpg")
-    bracelet9 = PIL.Image.open(r"\streamlit_learning\static\bracelet (9).jpg")
-    bracelet10 =PIL.Image.open(r"\streamlit_learning\static\bracelet (10).jpg")
-    necklace1 = PIL.Image.open(r"\streamlit_learning\static\necklace (1).jpg")
-    necklace2 = PIL.Image.open(r"\streamlit_learning\static\necklace (2).jpg")
-    necklace3 = PIL.Image.open(r"\streamlit_learning\static\necklace (3).jpg")
-    necklace4 = PIL.Image.open(r"\streamlit_learning\static\necklace (4).jpg")
-    necklace5 = PIL.Image.open(r"\streamlit_learning\static\necklace (5).jpg")
-    necklace6 = PIL.Image.open(r"\streamlit_learning\static\necklace (6).jpg")
-    necklace7 = PIL.Image.open(r"\streamlit_learning\static\necklace (7).jpg")
-    ring18 =    PIL.Image.open(r"\streamlit_learning\static\ring (1).jpg")
+    bracelet1 = PIL.Image.open(r"bracelet (1).jpg")
+    bracelet2 = PIL.Image.open(r"bracelet (2).jpg")
+    bracelet3 = PIL.Image.open(r"bracelet (3).jpg")
+    bracelet4 = PIL.Image.open(r"bracelet (4).jpg")
+    bracelet5 = PIL.Image.open(r"bracelet (5).jpg")
+    bracelet6 = PIL.Image.open(r"bracelet (6).jpg")
+    bracelet7 = PIL.Image.open(r"bracelet (7).jpg")
+    bracelet8 = PIL.Image.open(r"bracelet (8).jpg")
+    bracelet9 = PIL.Image.open(r"bracelet (9).jpg")
+    bracelet10 =PIL.Image.open(r"bracelet (10).jpg")
+    necklace1 = PIL.Image.open(r"necklace (1).jpg")
+    necklace2 = PIL.Image.open(r"necklace (2).jpg")
+    necklace3 = PIL.Image.open(r"necklace (3).jpg")
+    necklace4 = PIL.Image.open(r"necklace (4).jpg")
+    necklace5 = PIL.Image.open(r"necklace (5).jpg")
+    necklace6 = PIL.Image.open(r"necklace (6).jpg")
+    necklace7 = PIL.Image.open(r"necklace (7).jpg")
+    ring18 =    PIL.Image.open(r"ring (1).jpg")
 
 # Loading Images
 images_paths = [
-PIL.Image.open(r"\streamlit_learning\static\bracelet (1).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (2).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (3).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (4).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (5).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (6).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (7).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (8).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (9).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\bracelet (10).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\necklace (1).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\necklace (2).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\necklace (3).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\necklace (4).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\necklace (5).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\necklace (6).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\necklace (7).jpg"),
-PIL.Image.open(r"\streamlit_learning\static\ring (1).jpg")
+PIL.Image.open(r"bracelet (1).jpg"),
+PIL.Image.open(r"bracelet (2).jpg"),
+PIL.Image.open(r"bracelet (3).jpg"),
+PIL.Image.open(r"bracelet (4).jpg"),
+PIL.Image.open(r"bracelet (5).jpg"),
+PIL.Image.open(r"bracelet (6).jpg"),
+PIL.Image.open(r"bracelet (7).jpg"),
+PIL.Image.open(r"bracelet (8).jpg"),
+PIL.Image.open(r"bracelet (9).jpg"),
+PIL.Image.open(r"bracelet (10).jpg"),
+PIL.Image.open(r"necklace (1).jpg"),
+PIL.Image.open(r"necklace (2).jpg"),
+PIL.Image.open(r"necklace (3).jpg"),
+PIL.Image.open(r"necklace (4).jpg"),
+PIL.Image.open(r"necklace (5).jpg"),
+PIL.Image.open(r"necklace (6).jpg"),
+PIL.Image.open(r"necklace (7).jpg"),
+PIL.Image.open(r"ring (1).jpg")
 ]
 
 st.title("Hand Accessories by Farida")
