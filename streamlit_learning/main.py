@@ -1,4 +1,3 @@
-import PIL.Image
 import streamlit as st
 import os
 import PIL
@@ -49,45 +48,45 @@ def show_specs(type_nb, type_price):
 
 # bracelets images
 def load_images():
-    bracelet1 = PIL.Image.open(r"bracelet (1).jpg")
-    bracelet2 = PIL.Image.open(r"bracelet (2).jpg")
-    bracelet3 = PIL.Image.open(r"bracelet (3).jpg")
-    bracelet4 = PIL.Image.open(r"bracelet (4).jpg")
-    bracelet5 = PIL.Image.open(r"bracelet (5).jpg")
-    bracelet6 = PIL.Image.open(r"bracelet (6).jpg")
-    bracelet7 = PIL.Image.open(r"bracelet (7).jpg")
-    bracelet8 = PIL.Image.open(r"bracelet (8).jpg")
-    bracelet9 = PIL.Image.open(r"bracelet (9).jpg")
-    bracelet10 =PIL.Image.open(r"bracelet (10).jpg")
-    necklace1 = PIL.Image.open(r"necklace (1).jpg")
-    necklace2 = PIL.Image.open(r"necklace (2).jpg")
-    necklace3 = PIL.Image.open(r"necklace (3).jpg")
-    necklace4 = PIL.Image.open(r"necklace (4).jpg")
-    necklace5 = PIL.Image.open(r"necklace (5).jpg")
-    necklace6 = PIL.Image.open(r"necklace (6).jpg")
-    necklace7 = PIL.Image.open(r"necklace (7).jpg")
-    ring18 =    PIL.Image.open(r"ring (1).jpg")
+    bracelet1 = open(r"bracelet (1).jpg")
+    bracelet2 = open(r"bracelet (2).jpg")
+    bracelet3 = open(r"bracelet (3).jpg")
+    bracelet4 = open(r"bracelet (4).jpg")
+    bracelet5 = open(r"bracelet (5).jpg")
+    bracelet6 = open(r"bracelet (6).jpg")
+    bracelet7 = open(r"bracelet (7).jpg")
+    bracelet8 = open(r"bracelet (8).jpg")
+    bracelet9 = open(r"bracelet (9).jpg")
+    bracelet10 =open(r"bracelet (10).jpg")
+    necklace1 = open(r"necklace (1).jpg")
+    necklace2 = open(r"necklace (2).jpg")
+    necklace3 = open(r"necklace (3).jpg")
+    necklace4 = open(r"necklace (4).jpg")
+    necklace5 = open(r"necklace (5).jpg")
+    necklace6 = open(r"necklace (6).jpg")
+    necklace7 = open(r"necklace (7).jpg")
+    ring18 =    open(r"ring (1).jpg")
 
 # Loading Images
 images_paths = [
-PIL.Image.open(r"bracelet (1).jpg"),
-PIL.Image.open(r"bracelet (2).jpg"),
-PIL.Image.open(r"bracelet (3).jpg"),
-PIL.Image.open(r"bracelet (4).jpg"),
-PIL.Image.open(r"bracelet (5).jpg"),
-PIL.Image.open(r"bracelet (6).jpg"),
-PIL.Image.open(r"bracelet (7).jpg"),
-PIL.Image.open(r"bracelet (8).jpg"),
-PIL.Image.open(r"bracelet (9).jpg"),
-PIL.Image.open(r"bracelet (10).jpg"),
-PIL.Image.open(r"necklace (1).jpg"),
-PIL.Image.open(r"necklace (2).jpg"),
-PIL.Image.open(r"necklace (3).jpg"),
-PIL.Image.open(r"necklace (4).jpg"),
-PIL.Image.open(r"necklace (5).jpg"),
-PIL.Image.open(r"necklace (6).jpg"),
-PIL.Image.open(r"necklace (7).jpg"),
-PIL.Image.open(r"ring (1).jpg")
+open(r"bracelet (1).jpg"),
+open(r"bracelet (2).jpg"),
+open(r"bracelet (3).jpg"),
+open(r"bracelet (4).jpg"),
+open(r"bracelet (5).jpg"),
+open(r"bracelet (6).jpg"),
+open(r"bracelet (7).jpg"),
+open(r"bracelet (8).jpg"),
+open(r"bracelet (9).jpg"),
+open(r"bracelet (10).jpg"),
+open(r"necklace (1).jpg"),
+open(r"necklace (2).jpg"),
+open(r"necklace (3).jpg"),
+open(r"necklace (4).jpg"),
+open(r"necklace (5).jpg"),
+open(r"necklace (6).jpg"),
+open(r"necklace (7).jpg"),
+open(r"ring (1).jpg")
 ]
 
 st.title("Hand Accessories by Farida")
