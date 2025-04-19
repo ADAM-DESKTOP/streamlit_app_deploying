@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-import PIL
 
 # Introducing The Developer and The Creator Functions 
 
