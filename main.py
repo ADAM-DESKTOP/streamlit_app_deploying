@@ -1,8 +1,5 @@
-
-
 import streamlit as st
 from datetime import date
-from prayer_times_calculator import PrayerTimesCalculator
 import geocoder
 import calendar
 import json
@@ -12,6 +9,7 @@ from datetime import datetime
 from datetime import date
 import json
 import os
+from prayer_times_calculator import PrayerTimesCalculator
 
 
 import streamlit as st
@@ -146,7 +144,7 @@ if key not in prayer_status:
     prayer_status[key] = {p: False for p in prayers}
 
 for p in prayers:
-    checked = st.checkbox(p, value=prayer_status[key][p], key=f"{key}_{p}")
+    checked = st.checkbox(p, value=prayer_status[key][p], key=f"{key}_{p}", value=False)
     prayer_status[key][p] = checked
 
 save_prayer_status(prayer_status)
