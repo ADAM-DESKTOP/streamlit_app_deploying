@@ -10,55 +10,31 @@ from datetime import date
 import json
 import os
 from prayer_times_calculator import PrayerTimesCalculator
+from database import PrayerDB
 
+user_name: str = ""
 
-import streamlit as st
+if "username" not in st.session_state:
+    st.session_state["username"] = ""
 
-st.markdown("""
-    <style>
-    body {
-        background-color: #220929;
-        color: #ffffff;
-    }
+if not st.session_state["username"]:
+    name = st.text_input("What's your name", value="", placeholder="My name is...")
+    if name.strip():
+        st.session_state["username"] = name.strip()
+        # st.experimental_rerun()
+    else:
+        st.warning("Please enter your name to continue.")
+        st.stop()
+else:
+    name = st.session_state["username"]
 
-    button, .stButton>button {
-        background-color: #d19e53;
-        color: #000000;
-        border: none;
-        border-radius: 6px;
-    }
-
-    button:hover, .stButton>button:hover {
-        background-color: #b8843f;
-        color: #ffffff;
-    }
-
-    h1, h2, h3, h4 {
-        color: #d19e53;
-    }
-
-    a {
-        color: #d19e53;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- Persistent storage for prayer status ---
-DATA_FILE = "prayer_status.json"
-
-def load_prayer_status():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-def save_prayer_status(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f)
+# Initialize per-user DB
+prayer_db = PrayerDB(name)
 
 st.title("🕌 Prayer Tracker")
 
-prayer_status = load_prayer_status()
+# --- Persistent storage for prayer status ---
+
 
 # --- UI: Menu Bar ---
 st.header("Keep Track of your **Prayers** 🗓️")
@@ -125,34 +101,31 @@ def get():
 today = date.today()
 selected_month = st.selectbox("Month", list(calendar.month_name)[1:], index=today.month-1)
 selected_day = st.number_input("Day", min_value=1, max_value=31, value=today.day, step=1)
-
 month_idx = list(calendar.month_name).index(selected_month)
-month_days = calendar.monthcalendar(selected_day, month_idx)
-
+selected_date = date(today.year, month_idx, selected_day)
+key = selected_date.strftime("%Y-%m-%d")
 prayers = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]
 
+# Load prayer status from DB
+prayer_status = prayer_db.get_status_for_date(key)
+if not prayer_status:
+    prayer_status = {p: False for p in prayers}
 
+st.write(f"## {selected_date.strftime('%A, %B %d, %Y')}")
 
-
-# --- Day Details and Prayer Checkboxes ---
-selected_day = st.session_state.get("selected_day", today.day if today.month == month_idx and today.day == selected_day else 1)
-selected_date = date(selected_day, month_idx, selected_day)
-key = selected_date.strftime("%m-%d")
-st.write(f"## {current_date}")
-
-if key not in prayer_status:
-    prayer_status[key] = {p: False for p in prayers}
-
+updated_status = {}
 for p in prayers:
-    checked = st.checkbox(p, value=prayer_status[key][p], key=f"{key}_{p}")
-    prayer_status[key][p] = checked
+    checked = st.checkbox(p, value=prayer_status.get(p, False), key=f"{key}_{p}")
+    updated_status[p] = checked
 
-save_prayer_status(prayer_status)
+# Save to DB if changed
+if updated_status != prayer_status:
+    prayer_db.set_status_for_date(key, updated_status)
 
-if all(prayer_status[key][p] for p in prayers):
+if all(updated_status[p] for p in prayers):
     st.success("All prayers completed for this day! 🎉")
     st.balloons()
-elif any(prayer_status[key][p] for p in prayers):
+elif any(updated_status[p] for p in prayers):
     st.info("Some prayers completed for this day.")
 else:
     st.warning("No prayers completed for this day.")
@@ -205,3 +178,6 @@ st.markdown(
     "<p style='color:gray; text-align:center; font-size:0.9em;'>© 2025 Adam's Prayer App. All rights reserved.</p>",
     unsafe_allow_html=True
 )
+
+# At the end of the script, close DB connection
+prayer_db.close()
