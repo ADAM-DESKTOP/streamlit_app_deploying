@@ -144,7 +144,7 @@ if key not in prayer_status:
     prayer_status[key] = {p: False for p in prayers}
 
 for p in prayers:
-    checked = st.checkbox(p, value=prayer_status[key][p], key=f"{key}_{p}", value=False)
+    checked = st.checkbox(p, value=prayer_status[key][p], key=f"{key}_{p}")
     prayer_status[key][p] = checked
 
 save_prayer_status(prayer_status)
