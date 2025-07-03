@@ -11,25 +11,31 @@ import json
 import os
 from prayer_times_calculator import PrayerTimesCalculator
 from database import PrayerDB
+import uuid
 
 user_name: str = ""
 
 if "username" not in st.session_state:
     st.session_state["username"] = ""
+if "user_id" not in st.session_state:
+    st.session_state["user_id"] = ""
 
 if not st.session_state["username"]:
     name = st.text_input("What's your name", value="", placeholder="My name is...")
     if name.strip():
         st.session_state["username"] = name.strip()
-        # st.experimental_rerun()
+        # Generate a unique user ID only once
+        st.session_state["user_id"] = str(uuid.uuid4())
+        st.experimental_rerun()
     else:
         st.warning("Please enter your name to continue.")
         st.stop()
 else:
     name = st.session_state["username"]
 
-# Initialize per-user DB
-prayer_db = PrayerDB(name)
+# Use both name and user_id for the DB filename
+user_id = st.session_state["user_id"]
+prayer_db = PrayerDB(f"{name}_{user_id}")
 
 st.title("🕌 Prayer Tracker")
 
