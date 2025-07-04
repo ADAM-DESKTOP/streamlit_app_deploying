@@ -8,6 +8,7 @@ import calendar
 from prayer_times_calculator import PrayerTimesCalculator
 import uuid
 
+
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
@@ -79,52 +80,30 @@ else:
 
     Prayer_names = ["alFajr", "alZuhr", "alAsr", "alMaghreb", "alEshaa"]
 
-    # Get user's approximate location by IP
-    g = geocoder.ip('me')
-    lat, lng = g.latlng
-    country = g.country
 
     def get():
-        calc_method = 'isna'
+        calc_method = 'egypt'
         school = "Hanafi"
         midnightMode = "Standard"
         latitudeAdjustmentMethod = "one seventh"
-        tune = False
-        imsak_tune = 0
-        fajr_tune = 0
-        sunrise_tune = 0
-        dhuhr_tune = 0
-        asr_tune = 0
-        maghrib_tune = 0
-        sunset_tune = 0
-        isha_tune = 0
-        midnight_tune = 0
         fajr_angle = 19.5
-        maghrib_angle = None
         isha_angle = 17.5
 
         calc = PrayerTimesCalculator(
-            latitude=lat,
-            longitude=lng,
+            latitude=30.0626,
+            longitude=31.2497,
             calculation_method=calc_method,
             date=current_date,
             school=school,
             midnightMode=midnightMode,
             latitudeAdjustmentMethod=latitudeAdjustmentMethod,
-            tune=tune,
-            imsak_tune=imsak_tune,
-            fajr_tune=fajr_tune,
-            sunrise_tune=sunrise_tune,
-            dhuhr_tune=dhuhr_tune,
-            asr_tune=asr_tune,
-            maghrib_tune=maghrib_tune,
-            sunset_tune=sunset_tune,
-            isha_tune=isha_tune,
             fajr_angle=fajr_angle,
-            maghrib_angle=maghrib_angle,
+            # maghrib_angle=maghrib_angle,
             isha_angle=isha_angle,
             iso8601=False
         )
+
+        
         times = calc.fetch_prayer_times()
         return times
 
@@ -154,7 +133,7 @@ else:
         prayer_db.set_status_for_date(key, updated_status)
 
     if all(updated_status[p] for p in prayers):
-        st.success("All prayers completed for this day! 🎉")
+        st.success(f"All prayers completed for this day! 🎉")
         st.balloons()
     elif any(updated_status[p] for p in prayers):
         st.info("Some prayers completed for this day.")
@@ -194,7 +173,7 @@ else:
     st.divider()
     st.header("Info")
     st.markdown("**Developer**: ***Adam*** ")
-    st.write(f"🗺️ Detected Location: ({country})")
+    st.write(f"")
 
     st.markdown(
         "<p style='color:gray; text-align:center; font-size:0.9em;'>© 2025 Adam's Prayer App. All rights reserved.</p>",
@@ -203,3 +182,4 @@ else:
 
     # At the end of the script, close DB connection
     prayer_db.close()
+
