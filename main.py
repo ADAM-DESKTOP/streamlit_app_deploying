@@ -1,185 +1,160 @@
+"""
+Streamlit UI for Prayer Tracker + Tasks
+- Uses DBManager from database.py
+- Dark brown theme is injected via CSS for a consistent "brown ecosystem" dark mode
+- Professional layout with sidebar user selection, date picker, task form, prayer checklist, and task list
+"""
+
 import streamlit as st
-import hashlib
-import os
-from database import PrayerDB
-from datetime import date, datetime
-import geocoder
-import calendar
-from prayer_times_calculator import PrayerTimesCalculator
-import uuid
+from datetime import date
+from database import DBManager
+from pathlib import Path
 
+st.set_page_config(page_title="Prayer & Tasks — Tracker", layout="wide", initial_sidebar_state="expanded")
 
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+# --- Dark brown theme (injected CSS) ---
+BROWN_PRIMARY = "#a66b2a"
+BROWN_ACCENT = "#8a5b1f"
+BROWN_BG = "#1b120b"  # very dark brown / near black
+BROWN_PANEL = "#23160f"
+TEXT = "#EDE3DA"
 
-def save_user(username, password):
-    # Save user credentials to a simple file (for demo; use a real DB in production)
-    with open("users.txt", "a") as f:
-        f.write(f"{username}:{hash_password(password)}\n")
+st.markdown(
+    f"""
+    <style>
+    /* page background */
+    .stApp {{
+        background: linear-gradient(0deg, {BROWN_BG}, {BROWN_BG});
+        color: {TEXT};
+    }}
+    /* main container and sidebar */
+    .css-1d391kg .css-1v3fvcr {{
+        background-color: {BROWN_PANEL};
+    }}
+    .stSidebar .css-1d391kg {{
+        background-color: {BROWN_PANEL};
+    }}
+    /* headers and text */
+    .css-ffhzg2, .css-1v3fvcr, .st-bk {{
+        color: {TEXT} !important;
+    }}
+    /* buttons */
+    .stButton>button {{
+        background: linear-gradient(180deg, {BROWN_PRIMARY}, {BROWN_ACCENT});
+        color: #fff;
+        border-radius: 6px;
+        padding: 8px 12px;
+    }}
+    /* inputs */
+    .stTextInput>div>div>input, .stDateInput>div>div>input, textarea {{
+        background-color: #2b2018;
+        color: {TEXT};
+        border: 1px solid #3b2a1f;
+    }}
+    /* cards / tables */
+    .stDataFrame table {{
+        color: {TEXT};
+        background-color: transparent;
+    }}
+    /* checkbox labels color */
+    .stCheckbox label {{
+        color: {TEXT};
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-def user_exists(username):
-    if not os.path.exists("users.txt"):
-        return False
-    with open("users.txt", "r") as f:
-        for line in f:
-            if line.split(":")[0] == username:
-                return True
-    return False
+# --- Database ---
+DB = DBManager()  # uses data/app_data.db by default
 
-def check_user(username, password):
-    if not os.path.exists("users.txt"):
-        return False
-    with open("users.txt", "r") as f:
-        for line in f:
-            u, p = line.strip().split(":")
-            if u == username and p == hash_password(password):
-                return True
-    return False
+# --- Sidebar: user and date selection ---
+st.sidebar.header("User & Date")
+username = st.sidebar.text_input("Your name", value=st.session_state.get("username", "Guest"))
+st.sidebar.write("Date for prayers / tasks")
+selected_date = st.sidebar.date_input("Select date", value=st.session_state.get("selected_date", date.today()))
+# normalize and store in session
+st.session_state["username"] = username
+st.session_state["selected_date"] = selected_date
 
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-if "username" not in st.session_state:
-    st.session_state["username"] = ""
+# Convert date to ISO string for DB usage
+date_iso = selected_date.isoformat()
 
-if not st.session_state["logged_in"]:
-    st.title("Login or Register")
-    tab1, tab2 = st.tabs(["Login", "Register"])
+# --- Main layout ---
+st.title("Prayer Tracker & Tasks")
+st.caption("Organize your daily prayers and tasks — professional, private, and backed by SQLite.")
 
-    with tab1:
-        login_user = st.text_input("Username", key="login_user")
-        login_pass = st.text_input("Password", type="password", key="login_pass")
-        if st.button("Login"):
-            if check_user(login_user, login_pass):
-                st.session_state["logged_in"] = True
-                st.session_state["username"] = login_user
-                st.success("Logged in successfully!")
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
+col1, col2 = st.columns([2, 1])
 
-    with tab2:
-        reg_user = st.text_input("Choose a username", key="reg_user")
-        reg_pass = st.text_input("Choose a password", type="password", key="reg_pass")
-        if st.button("Register"):
-            if user_exists(reg_user):
-                st.error("Username already exists.")
-            elif reg_user.strip() == "" or reg_pass.strip() == "":
-                st.error("Username and password cannot be empty.")
-            else:
-                save_user(reg_user, reg_pass)
-                st.success("Registration successful! Please log in.")
-else:
-    name = st.session_state["username"]
-    user_id = str(uuid.uuid4())  # Generate a unique user ID
-    prayer_db = PrayerDB(f"{name}_{user_id}")
+# Left column: Tasks
+with col1:
+    st.subheader("Tasks")
+    with st.form(key="add_task_form", clear_on_submit=True):
+        task_text = st.text_input("Add a task", placeholder="e.g. Prepare sermon notes", key="task_input")
+        due_date = st.date_input("Due date (optional)", value=selected_date, key="task_due")
+        submitted = st.form_submit_button("Add task")
+        if submitted and task_text.strip():
+            try:
+                created = DB.add_task(username, task_text.strip(), due_date.isoformat() if due_date else None)
+                st.success("Task added")
+            except Exception as e:
+                st.error(f"Could not add task: {e}")
 
-    st.title("🕌 Prayer Tracker")
-    st.header("Keep Track of your **Prayers** 🗓️")
+    # Show lists
+    tasks = DB.get_tasks(username)
+    st.markdown("### Incomplete")
+    for t in tasks["incomplete"]:
+        row_col1, row_col2 = st.columns([8, 2])
+        with row_col1:
+            st.markdown(f"**{t['task']}**  \n*Due:* {t.get('due_date') or '—'}  \n*Added:* {t.get('created_at')}")
+        with row_col2:
+            # Buttons to mark complete or delete
+            if st.button("Mark done", key=f"done_{t['id']}"):
+                DB.set_task_completed(username, t["id"], True)
+                st.experimental_rerun()
+            if st.button("Delete", key=f"del_{t['id']}"):
+                DB.delete_task(username, t["id"])
+                st.experimental_rerun()
 
-    current_date = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
+    st.markdown("### Completed")
+    for t in tasks["completed"]:
+        st.markdown(f"- ~~{t['task']}~~  (added {t.get('created_at')})")
+        if st.button("Mark not done", key=f"undo_{t['id']}"):
+            DB.set_task_completed(username, t["id"], False)
+            st.experimental_rerun()
 
-    Prayer_names = ["alFajr", "alZuhr", "alAsr", "alMaghreb", "alEshaa"]
-
-
-    def get():
-        calc_method = 'egypt'
-        school = "Hanafi"
-        midnightMode = "Standard"
-        latitudeAdjustmentMethod = "one seventh"
-        fajr_angle = 19.5
-        isha_angle = 17.5
-
-        calc = PrayerTimesCalculator(
-            latitude=30.0626,
-            longitude=31.2497,
-            calculation_method=calc_method,
-            date=current_date,
-            school=school,
-            midnightMode=midnightMode,
-            latitudeAdjustmentMethod=latitudeAdjustmentMethod,
-            fajr_angle=fajr_angle,
-            # maghrib_angle=maghrib_angle,
-            isha_angle=isha_angle,
-            iso8601=False
-        )
-
-        
-        times = calc.fetch_prayer_times()
-        return times
-
-    # --- Calendar View ---
-    today = date.today()
-    selected_month = st.selectbox("Month", list(calendar.month_name)[1:], index=today.month-1)
-    selected_day = st.number_input("Day", min_value=1, max_value=31, value=today.day, step=1)
-    month_idx = list(calendar.month_name).index(selected_month)
-    selected_date = date(today.year, month_idx, selected_day)
-    key = selected_date.strftime("%Y-%m-%d")
-    prayers = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]
-
-    # Load prayer status from DB
-    prayer_status = prayer_db.get_status_for_date(key)
-    if not prayer_status:
-        prayer_status = {p: False for p in prayers}
-
-    st.write(f"## {selected_date.strftime('%A, %B %d, %Y')}")
-
-    updated_status = {}
-    for p in prayers:
-        checked = st.checkbox(p, value=prayer_status.get(p, False), key=f"{key}_{p}")
-        updated_status[p] = checked
-
-    # Save to DB if changed
-    if updated_status != prayer_status:
-        prayer_db.set_status_for_date(key, updated_status)
-
-    if all(updated_status[p] for p in prayers):
-        st.success(f"All prayers completed for this day! 🎉")
-        st.balloons()
-    elif any(updated_status[p] for p in prayers):
-        st.info("Some prayers completed for this day.")
-    else:
-        st.warning("No prayers completed for this day.")
-
-    st.divider()
-    st.header("Prayer Times")
-
-    prayer_times = get()
-
-    prayer_times_list = [
-        prayer_times['Fajr'],
-        prayer_times['Dhuhr'],
-        prayer_times['Asr'],
-        prayer_times['Maghrib'],
-        prayer_times['Isha']
+# Right column: Prayers
+with col2:
+    st.subheader("Prayer checklist")
+    # default prayer set (you can modify this list)
+    default_prayers = [
+        "AlFajr",
+        "alZuhr",
+        "Alaasr",
+        "Almaghreb",
+        "alEshaa"
     ]
+    # Ensure these prayers exist for the user and date (won't overwrite completed state)
+    DB.ensure_prayers_exist_for_date(username, date_iso, default_prayers)
 
-    prayers_dict = {
-        "Prayer": Prayer_names,
-        "Time" : prayer_times_list
-    }
+    prayer_status = DB.get_prayers_for_date(username, date_iso)
+    # Display as checkboxes in a form so we can batch update
+    with st.form(key="prayer_form"):
+        updated_status = {}
+        for p_text in sorted(prayer_status.keys()):
+            checked = prayer_status.get(p_text, False)
+            # Use unique keys to avoid collisions in Streamlit
+            updated = st.checkbox(p_text, value=checked, key=f"pr_{p_text}_{date_iso}")
+            updated_status[p_text] = updated
+        saved = st.form_submit_button("Save prayers")
+        if saved:
+            DB.set_prayer_status_for_date(username, date_iso, updated_status)
+            st.success("Prayers updated")
 
-    with st.container(border=True):
-        st.markdown(f"**{prayers_dict['Prayer'][0]}**  :   {prayers_dict['Time'][0]}")
-        st.markdown(f"**{prayers_dict['Prayer'][1]}**  :   {prayers_dict['Time'][1]}")
-        st.markdown(f"**{prayers_dict['Prayer'][2]}**  :   {prayers_dict['Time'][2]}")
-        st.markdown(f"**{prayers_dict['Prayer'][3]}**  :   {prayers_dict['Time'][3]}")
-        st.markdown(f"**{prayers_dict['Prayer'][4]}**  :   {prayers_dict['Time'][4]}")
+st.sidebar.markdown("---")
+st.sidebar.caption("Made with care — brown dark theme enabled.")
 
-    st.markdown(
-        "<p style='color:gray;  font-size:0.9em;'>note That the prayer times aren't specific and we're Working to improve it</p>",
-        unsafe_allow_html=True
-    )
-
-    st.divider()
-    st.header("Info")
-    st.markdown("**Developer**: ***Adam*** ")
-    st.write(f"")
-
-    st.markdown(
-        "<p style='color:gray; text-align:center; font-size:0.9em;'>© 2025 Adam's Prayer App. All rights reserved.</p>",
-        unsafe_allow_html=True
-    )
-
-    # At the end of the script, close DB connection
-    prayer_db.close()
-
+# optionally show debug / DB path
+if st.sidebar.checkbox("Show storage info"):
+    st.sidebar.write(f"DB file: {DB.db_path}")
+    st.sidebar.write(f"User: {username}  Date: {date_iso}")
