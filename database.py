@@ -1,96 +1,201 @@
+"""
+Improved database layer for Prayer Tracker / Task app.
+
+- Uses a single SQLite file stored in ./data/app_data.db
+- Thread-safe writes via a lock; check_same_thread=False for concurrency
+- Uses sqlite3.Row for dict-like results
+- Centralized tables: tasks, prayers
+- All methods return Python dict/list structures suitable for UI consumption
+"""
+
 import sqlite3
 import threading
-import os
-# The DataBase Class
-class DataBase():
-    def __init__(self):
-        self.con = sqlite3.connect("tasks_database.db")
-        self.cursor = self.con.cursor()
-        self.create_task_table()
+from pathlib import Path
+from typing import List, Dict, Optional
+import datetime
 
-    def create_task_table(self):
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS tasks(id integer PRIMARY KEY AUTOINCREMENT, task varchar(50) NOT NULL, \
-        due_date varchar(50), completed BOOLEAN NOT NULL CHECK (completed IN (0, 1)) )")
-        self.con.commit()
-
-    # Creating a Task
-    def create_task(self, task, due_date):
-        self.cursor.execute("INSERT INTO tasks(task, due_date, completed) VALUES(?,?,?)", (task, due_date, 0))
-        self.con.commit()
+DEFAULT_DB_DIR = Path(__file__).parent / "data"
+DEFAULT_DB_FILE = DEFAULT_DB_DIR / "app_data.db"
 
 
-        # Getting The Last Entered Item to add it to The Database
-        created_task = self.cursor.execute("SELECT id, task, due_date FROM tasks WHERE task=? and completed=0", (task,)).fetchall()
-        return created_task
-    def get_tasks(self):
-        """Getting all The Tasks"""
-        incompleted_tasks = self.cursor.execute("SELECT id, task, due_date FROM tasks WHERE completed=0").fetchall()
-        completed_tasks = self.cursor.execute("SELECT id, task, due_date FROM tasks WHERE completed=1").fetchall()
-        return completed_tasks, incompleted_tasks
+def _normalize_username(username: str) -> str:
+    if username is None:
+        return "anonymous"
+    return username.strip().lower().replace(" ", "_")
 
-    # Marking The Tasks as Completed
-    def mark_task_completed(self, task_id,):
-        """Updating The Task's Status"""
-        self.cursor.execute("UPDATE tasks SET completed=1 WHERE id=?", (task_id,))
-        self.con.commit()
-    # Marking The Tasks as Incompleted
-    def mark_task_incompleted(self, task_id):
-        """Updating The Task's Status"""
-        self.cursor.execute("UPDATE tasks SET completed=0 WHERE id=?", (task_id,))
-        self.con.commit()
 
-        # Return The Task in Strings
-        task_text = self.cursor.execute("SELECT task FROM tasks WHERE id=?", (task_id,)).fetchall()
-
-        return task_text[0][0]
-
-    def delete_task(self, tasks_id):
-        self.cursor.execute("DELETE FROM tasks WHERE id=?", (tasks_id,))
-        self.con.commit()
-
-    def close_connection(self):
-        self.con.close()
-
-class PrayerDB:
-    def __init__(self, username):
-        self.db_file = f"prayers_{username.lower().strip().replace(' ', '_')}.db"
-        self.lock = threading.Lock()
+class DBManager:
+    def __init__(self, db_path: Optional[Path] = None):
+        self.db_path = Path(db_path) if db_path else DEFAULT_DB_FILE
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
         self._connect()
-        self._create_table()
+        self._create_tables()
 
     def _connect(self):
-        self.con = sqlite3.connect(self.db_file, check_same_thread=False)
-        self.cursor = self.con.cursor()
+        # check_same_thread=False to allow usage across threads (Streamlit callbacks etc.)
+        self.con = sqlite3.connect(str(self.db_path), check_same_thread=False, timeout=30)
+        self.con.row_factory = sqlite3.Row
+        self.cur = self.con.cursor()
+        # Recommended pragmas for better durability (SQLite)
+        with self._lock:
+            self.cur.execute("PRAGMA foreign_keys = ON;")
+            self.cur.execute("PRAGMA journal_mode = WAL;")
+            self.cur.execute("PRAGMA synchronous = NORMAL;")
 
-    def _create_table(self):
-        with self.lock:
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS prayers (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT NOT NULL,
-                    prayer TEXT NOT NULL,
-                    completed INTEGER NOT NULL CHECK (completed IN (0,1)),
-                    UNIQUE(date, prayer)
-                )
+    def _create_tables(self):
+        with self._lock:
+            # tasks table (per user)
+            self.cur.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user TEXT NOT NULL,
+                task TEXT NOT NULL,
+                due_date TEXT,
+                completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0,1)),
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
             """)
-            self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_prayer_date ON prayers(date)")
+            self.cur.execute("CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user);")
+            self.cur.execute("CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);")
+
+            # prayers table (per user, per date, per prayer unique)
+            self.cur.execute("""
+            CREATE TABLE IF NOT EXISTS prayers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user TEXT NOT NULL,
+                date TEXT NOT NULL,
+                prayer TEXT NOT NULL,
+                completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0,1)),
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user, date, prayer)
+            );
+            """)
+            self.cur.execute("CREATE INDEX IF NOT EXISTS idx_prayers_user_date ON prayers(user, date);")
             self.con.commit()
 
-    def get_status_for_date(self, date):
-        with self.lock:
-            self.cursor.execute("SELECT prayer, completed FROM prayers WHERE date=?", (date,))
-            rows = self.cursor.fetchall()
-            return {prayer: bool(completed) for prayer, completed in rows}
+    # ----------------------
+    # Task API
+    # ----------------------
+    def add_task(self, username: str, task: str, due_date: Optional[str] = None) -> Dict:
+        """
+        Add a task for a user. Returns the created task as a dict.
+        """
+        user = _normalize_username(username)
+        if not task or not task.strip():
+            raise ValueError("Task text must be non-empty.")
+        with self._lock:
+            self.cur.execute(
+                "INSERT INTO tasks (user, task, due_date, completed) VALUES (?, ?, ?, 0)",
+                (user, task.strip(), due_date)
+            )
+            self.con.commit()
+            task_id = self.cur.lastrowid
+            return self.get_task(user, task_id)
 
-    def set_status_for_date(self, date, status_dict):
-        with self.lock:
-            for prayer, completed in status_dict.items():
-                self.cursor.execute("""
-                    INSERT INTO prayers (date, prayer, completed)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(date, prayer) DO UPDATE SET completed=excluded.completed
-                """, (date, prayer, int(bool(completed))))
+    def get_task(self, username: str, task_id: int) -> Dict:
+        user = _normalize_username(username)
+        row = self.cur.execute(
+            "SELECT id, user, task, due_date, completed, created_at FROM tasks WHERE id=? AND user=?",
+            (task_id, user)
+        ).fetchone()
+        return dict(row) if row else {}
+
+    def get_tasks(self, username: str) -> Dict[str, List[Dict]]:
+        """
+        Returns { "incomplete": [...], "completed": [...] }
+        each task is a dict with id, task, due_date, completed, created_at
+        """
+        user = _normalize_username(username)
+        with self._lock:
+            incompleted = self.cur.execute(
+                "SELECT id, task, due_date, completed, created_at FROM tasks WHERE user=? AND completed=0 ORDER BY created_at DESC",
+                (user,)
+            ).fetchall()
+            completed = self.cur.execute(
+                "SELECT id, task, due_date, completed, created_at FROM tasks WHERE user=? AND completed=1 ORDER BY created_at DESC",
+                (user,)
+            ).fetchall()
+        return {
+            "incomplete": [dict(r) for r in incompleted],
+            "completed": [dict(r) for r in completed]
+        }
+
+    def set_task_completed(self, username: str, task_id: int, completed: bool = True) -> bool:
+        user = _normalize_username(username)
+        with self._lock:
+            self.cur.execute(
+                "UPDATE tasks SET completed=? WHERE id=? AND user=?",
+                (1 if completed else 0, task_id, user)
+            )
+            self.con.commit()
+            return self.cur.rowcount > 0
+
+    def delete_task(self, username: str, task_id: int) -> bool:
+        user = _normalize_username(username)
+        with self._lock:
+            self.cur.execute("DELETE FROM tasks WHERE id=? AND user=?", (task_id, user))
+            self.con.commit()
+            return self.cur.rowcount > 0
+
+    # ----------------------
+    # Prayer API
+    # ----------------------
+    def get_prayers_for_date(self, username: str, date: str) -> Dict[str, bool]:
+        """
+        Return a dict { prayer_text: completed_bool } for the given user and date.
+        date is a string like 'YYYY-MM-DD' (the UI should pass date.isoformat()).
+        """
+        user = _normalize_username(username)
+        with self._lock:
+            rows = self.cur.execute(
+                "SELECT prayer, completed FROM prayers WHERE user=? AND date=? ORDER BY id",
+                (user, date)
+            ).fetchall()
+        return {row["prayer"]: bool(row["completed"]) for row in rows}
+
+    def set_prayer_status_for_date(self, username: str, date: str, status: Dict[str, bool]) -> None:
+        """
+        Given a mapping of prayer->bool, insert or update rows for that date and user.
+        """
+        user = _normalize_username(username)
+        with self._lock:
+            for prayer, completed in status.items():
+                prayer_text = prayer.strip()
+                self.cur.execute("""
+                    INSERT INTO prayers (user, date, prayer, completed)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(user, date, prayer) DO UPDATE SET completed=excluded.completed
+                """, (user, date, prayer_text, 1 if completed else 0))
             self.con.commit()
 
+    def ensure_prayers_exist_for_date(self, username: str, date: str, prayers: List[str]) -> None:
+        """
+        Ensures the given list of prayer texts exist for the user/date.
+        Useful for initializing the day's prayer checklist.
+        """
+        user = _normalize_username(username)
+        with self._lock:
+            for prayer in prayers:
+                prayer_text = prayer.strip()
+                # INSERT OR IGNORE to avoid changing completed state if already exists
+                self.cur.execute("""
+                    INSERT OR IGNORE INTO prayers (user, date, prayer, completed)
+                    VALUES (?, ?, ?, 0)
+                """, (user, date, prayer_text))
+            self.con.commit()
+
+    # ----------------------
+    # Utilities
+    # ----------------------
     def close(self):
-        self.con.close()
+        try:
+            self.con.close()
+        except Exception:
+            pass
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
